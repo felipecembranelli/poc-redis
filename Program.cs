@@ -118,10 +118,6 @@ namespace redis_poc
             else {
                 Console.WriteLine("Employee not found");
             }
-
-
-
-
         }
 
         private static Lazy<ConnectionMultiplexer> lazyConnection = CreateConnection();
