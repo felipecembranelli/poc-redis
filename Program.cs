@@ -2,20 +2,24 @@
 using StackExchange.Redis;
 using System.Net.Sockets;
 using System.Threading;
+using Newtonsoft.Json;
 
 namespace redis_poc
 {
 
+    // code based on this article
     //https://docs.microsoft.com/en-us/azure/azure-cache-for-redis/cache-dotnet-how-to-use-azure-redis-cache
+
     class Program
     {
-        //readonly static ConnectionMultiplexer muxer = ConnectionMultiplexer.Connect("127.0.0.1");
+        private const string REDIS_HOST = "127.0.0.1";
+        private const string REDIS_PORT = "6379";
+
+        static IDatabase cache = null;
 
         static void Main(string[] args)
         {
-            //InitializeConfiguration();
-
-            IDatabase cache = GetDatabase();
+            cache = GetDatabase();
 
             // Perform cache operations using the cache object...
 
@@ -42,9 +46,11 @@ namespace redis_poc
             // Note that this requires allowAdmin=true in the connection string
             cacheCommand = "CLIENT LIST";
             Console.WriteLine("\nCache command  : " + cacheCommand);
-            
-            var endpoint = (System.Net.DnsEndPoint)GetEndPoints()[0];
-            IServer server = GetServer(endpoint.Host, endpoint.Port);
+
+            //it didn't work ubuntu
+            //var endpoint = (System.Net.DnsEndPoint)GetEndPoints()[0];
+
+            IServer server = GetServer(REDIS_HOST, int.Parse(REDIS_PORT));
             ClientInfo[] clients = server.ClientList();
 
             Console.WriteLine("Cache response :");
@@ -53,7 +59,68 @@ namespace redis_poc
                 Console.WriteLine(client.Raw);
             }
 
+
+            // Store .NET object to cache
+            Employee e007 = new Employee("007", "Davide Columbo", 100);
+            Console.WriteLine("Cache response from storing Employee .NET object : " +
+            cache.StringSet("e007", JsonConvert.SerializeObject(e007)));
+
+            // Retrieve .NET object from cache
+            Employee e007FromCache = JsonConvert.DeserializeObject<Employee>(cache.StringGet("e007"));
+            Console.WriteLine("Deserialized Employee .NET object :\n");
+            Console.WriteLine("\tEmployee.Name : " + e007FromCache.Name);
+            Console.WriteLine("\tEmployee.Id   : " + e007FromCache.Id);
+            Console.WriteLine("\tEmployee.Age  : " + e007FromCache.Age + "\n");
+
+
+            // create multiple employees
+            SetEmployeeCache(TimeSpan.FromSeconds(10));
+
+            System.Threading.Thread.Sleep(5000);
+
+            // get from cache
+            GetEmployeeCache("e-1");
+            GetEmployeeCache("e007");
+
             CloseConnection(lazyConnection);
+
+        }
+
+        private static void SetEmployeeCache(TimeSpan ttl)
+        {
+
+            for (int i = 0; i < 100; i++)
+            {
+                string redisKey = "e-" + i.ToString();
+
+                Employee e = new Employee(redisKey, "Felipe - " + i.ToString(), 100);
+
+                Console.WriteLine("Cache response from storing Employee .NET object : " +
+                cache.StringSet(redisKey, JsonConvert.SerializeObject(e), ttl));
+            }
+
+
+        }
+
+        private static void GetEmployeeCache(string redisKey)
+        {
+            var value = cache.StringGet(redisKey);
+
+            if (value != RedisValue.Null)
+            {
+
+                Employee e = JsonConvert.DeserializeObject<Employee>(value);
+                Console.WriteLine("Deserialized Employee .NET object :\n");
+                Console.WriteLine("\tEmployee.Name : " + e.Name);
+                Console.WriteLine("\tEmployee.Id   : " + e.Id);
+                Console.WriteLine("\tEmployee.Age  : " + e.Age + "\n");
+            }
+            else {
+                Console.WriteLine("Employee not found");
+            }
+
+
+
 
         }
 
@@ -73,7 +140,7 @@ namespace redis_poc
             {
                 //string cacheConnection = Configuration[SecretName];
                 //return ConnectionMultiplexer.Connect(cacheConnection);
-                return ConnectionMultiplexer.Connect("127.0.0.1:6379");
+                return ConnectionMultiplexer.Connect(REDIS_HOST + ":" + REDIS_PORT + ",allowAdmin=true");
             });
         }
 
