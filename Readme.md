@@ -17,6 +17,10 @@ https://redis.io/learn/develop/dotnet/aspnetcore/caching/basic-api-caching
 Distributed caching in ASP.NET Core
 https://learn.microsoft.com/en-us/aspnet/core/performance/caching/distributed?view=aspnetcore-9.0
 
+## Eviction Policies
+
+https://redis.io/blog/cache-eviction-strategies/
+
 ## Redis Key Naming Best Practices
 https://medium.com/nerd-for-tech/unveiling-the-art-of-redis-key-naming-best-practices-6e20f3839e4a
 
